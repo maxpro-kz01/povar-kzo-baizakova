@@ -424,7 +424,7 @@ var $=function(s,r){return (r||document).querySelector(s)};
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
 var LS={get:function(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del:function(k){try{localStorage.removeItem(k)}catch(e){}}};
 var API='https://br-soft-star-bg6t84ky-povar.compute.c-9.eu-central-1.aws.neon.tech';
-function api(m,p,b,px){var h={'Content-Type':'application/json'},pin=px||LS.get('povar.pin','')||LS.get('povar.kpin','');if(pin)h['X-Pin']=pin;return fetch(API+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined,cache:'no-store'}).then(function(r){if(r.status===401){var e=new Error('pin');e.pin=1;throw e}if(!r.ok)throw new Error('http '+r.status);return r.json()})}
+function api(m,p,b,px){var h={'Content-Type':'application/json'},pin=px||LS.get('povar.pin','')||LS.get('povar.kpin','');if(pin)h['X-Pin']=pin;var ac=null,tm=null;try{ac=new AbortController();tm=setTimeout(function(){ac.abort()},15000)}catch(x){}return fetch(API+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined,cache:'no-store',signal:ac?ac.signal:undefined}).finally(function(){clearTimeout(tm)}).then(function(r){if(r.status===401){var e=new Error('pin');e.pin=1;throw e}if(!r.ok)throw new Error('http '+r.status);return r.json()})}
 var CATN={};DATA.cats.forEach(function(c){CATN[c[0]]=c[1]});
 var pad=function(n){return String(n).padStart(2,'0')};
 var ymd=function(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
@@ -615,7 +615,7 @@ function loadDraft(){
   DRAFT=(d&&d.base===(STATE.rev||0))?d.state:JSON.parse(JSON.stringify({v:1,rev:STATE.rev||0,items:STATE.items,busy:STATE.busy}));
   DRAFT.items=DRAFT.items||[];DRAFT.busy=DRAFT.busy||{};
 }
-function saveDraft(){LS.set('povar.draft',{base:STATE.rev||0,state:DRAFT})}
+var AUTOT=null;function saveDraft(){LS.set('povar.draft',{base:STATE.rev||0,state:DRAFT});if(!IN_CLAUDE&&LS.get('povar.pin','')){clearTimeout(AUTOT);AUTOT=setTimeout(function(){if(DRAFT&&dirty())doPublish()},1200)}}
 function dirty(){return JSON.stringify({i:DRAFT.items,b:DRAFT.busy})!==JSON.stringify({i:STATE.items,b:STATE.busy})}
 function buildHtml(st){
   var json=JSON.stringify(st).replace(/</g,'\\u003c');
@@ -625,7 +625,7 @@ function doPublish(){
   if(!IN_CLAUDE){
     var ns={v:1,rev:(STATE.rev||0)+1,items:DRAFT.items,busy:DRAFT.busy};
     var b0=$('#pubbtn');if(b0){b0.disabled=true;b0.textContent='Публикую…'}
-    return api('PUT','/state',ns).then(function(){LS.del('povar.draft');applyState(ns);DRAFT=null;loadDraft();adRender();toast('Опубликовано: клиенты видят изменения')},function(e){if(b0){b0.disabled=false;b0.textContent='Опубликовать'}toast(e&&e.pin?'Неверный PIN-код':'Не удалось опубликовать. Проверьте интернет.')});
+    return api('PUT','/state',ns).then(function(){LS.del('povar.draft');applyState(ns);DRAFT=null;loadDraft();adRender();toast('Сохранено ✓ Клиенты уже видят изменения')},function(e){if(b0){b0.disabled=false;b0.textContent='Опубликовать'}toast(e&&e.pin?'Неверный PIN-код':'Не удалось опубликовать. Проверьте интернет.')});
   }
   if(!CAP.artifact){toast('Публикация недоступна: войдите как администратор.');return Promise.resolve()}
   var st={v:1,rev:(STATE.rev||0)+1,items:DRAFT.items,busy:DRAFT.busy};
@@ -907,7 +907,7 @@ document.addEventListener('click',function(e){
   if(t=e.target.closest('[data-tog]')){e.preventDefault();toggle(t.dataset.tog);return}
   if(t=e.target.closest('[data-open]')){lbOpen(t.dataset.open);return}
   if(t=e.target.closest('[data-cat]')){cat=t.dataset.cat;shown=STEP;renderChips();renderMenu();var c=$('#chips');if(c){var on=c.querySelector('.on');if(on&&on.scrollIntoView)on.scrollIntoView({inline:'center',block:'nearest'})}return}
-  if(t=e.target.closest('[data-adtab]')){if(t.dataset.adtab==='rep'&&!IN_CLAUDE&&!AD.repOk){repPin();return}AD.tab=t.dataset.adtab;adRender();return}
+  if(t=e.target.closest('[data-adtab]')){if(t.dataset.adtab==='rep'&&!IN_CLAUDE&&!AD.repOk){if(LS.get('povar.pin','')){AD.repOk=true}else{repPin();return}}AD.tab=t.dataset.adtab;adRender();return}
   if(t=e.target.closest('[data-flt]')){AD.flt=t.dataset.flt;adRender();return}
   if(t=e.target.closest('[data-mcat]')){AD.mcat=t.dataset.mcat;adRender();return}
   if(t=e.target.closest('[data-ost]')){osStatus(t.dataset.ost,t.dataset.st);return}
@@ -997,7 +997,7 @@ document.addEventListener('click',function(e){
 function applyState(st){STATE=st;STATE.busy=STATE.busy||{};ALL=STATE.items||[];BYID=mk(ALL);ITEMS=ALL.filter(function(i){return !i.hid});Object.keys(ST.sel).forEach(function(k){if(!BYID[k])delete ST.sel[k]});renderChips();renderMenu();renderSel();busyCheck()}
 function pinForm(box,w){
   box.innerHTML='<div class="ah"><b>'+(w==='tv'?'Экран кухни':'Админка')+'</b><button class="sm" data-act="adclose">Закрыть</button></div><div class="w" style="max-width:420px;padding-top:40px;display:grid;gap:12px;font-size:16px"><h3 style="margin:0;font:800 22px var(--fd)">'+(w==='tv'?'PIN-код кухни':'PIN-код администратора')+'</h3><div class="f"><input id="pin-in" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"></div><p class="err" id="pin-err" hidden></p><button class="btn p" id="pin-go">Войти</button></div>';
-  var go=function(){var v=$('#pin-in').value.trim();if(!v)return;var key=w==='tv'?'povar.kpin':'povar.pin';LS.del('povar.pin');LS.del('povar.kpin');LS.set(key,v);api('GET','/check').then(function(r){if(w!=='tv'&&!(r&&r.role==='admin')){LS.del('povar.pin');var er=$('#pin-err');if(er){er.textContent='Это PIN кухни. В админку входят только с PIN администратора.';er.hidden=false}return}if(w==='tv')openTv();else openAdmin()},function(e){LS.del(key);var er=$('#pin-err');if(er){er.textContent=e&&e.pin?'Неверный PIN-код':'Нет связи с сервером. Проверьте интернет.';er.hidden=false}})};
+  var go=function(){var v=$('#pin-in').value.trim();if(!v)return;var pg=$('#pin-go');if(pg){pg.disabled=true;pg.textContent='Проверяю…';setTimeout(function(){var q=$('#pin-go');if(q){q.disabled=false;q.textContent='Войти'}},16000)}var key=w==='tv'?'povar.kpin':'povar.pin';LS.del('povar.pin');LS.del('povar.kpin');LS.set(key,v);api('GET','/check').then(function(r){if(w!=='tv'&&!(r&&r.role==='admin')){LS.del('povar.pin');var er=$('#pin-err');if(er){er.textContent='Это PIN кухни. В админку входят только с PIN администратора.';er.hidden=false}return}if(w==='tv')openTv();else openAdmin()},function(e){LS.del(key);var er=$('#pin-err');if(er){er.textContent=e&&e.pin?'Неверный PIN-код':'Нет связи с сервером. Проверьте интернет.';er.hidden=false}})};
   $('#pin-go').onclick=go;$('#pin-in').onkeydown=function(e){if(e.key==='Enter')go()};
   setTimeout(function(){try{$('#pin-in').focus()}catch(x){}},50);
 }
