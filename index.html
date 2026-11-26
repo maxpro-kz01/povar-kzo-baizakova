@@ -322,18 +322,20 @@ a{color:inherit}
 .rent svg{position:relative;flex:none;height:128%;width:auto;margin:0 -4px -12px 0;align-self:flex-end}
 @media(max-width:420px){.rent{height:138px;padding-left:16px;gap:0}.rent b{font-size:19px}.rent small .x{display:none}.rent>.go{display:none}.rent>div .go{display:inline-flex;height:32px;margin-top:9px;padding:0 13px;font-size:12.5px}.rent svg{height:auto;width:50%;margin:0 -14px -6px 0}}
 /* lunch banner */
-.lban{position:relative;display:block;margin-top:12px;height:clamp(190px,28vw,300px);border-radius:20px;overflow:hidden;background:#2b0a0e;box-shadow:0 10px 24px rgba(90,20,25,.18);text-decoration:none;color:#fff}
-.lban img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s ease}
-.lban img.on{opacity:1}
-.lban:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(30,4,8,.75) 100%)}
-.lb-t{position:absolute;left:16px;bottom:14px;right:120px;z-index:1}
-.lb-t b{display:block;font:800 20px/1.15 var(--fd)}
-.lb-t small{display:block;margin-top:3px;font:600 13px/1.3 var(--fd);color:rgba(255,255,255,.9)}
-.lb-go{position:absolute;right:14px;bottom:14px;z-index:1;display:inline-flex;align-items:center;height:40px;padding:0 18px;border-radius:99px;background:var(--am);color:#fff;font:800 14px var(--fd);box-shadow:0 6px 16px rgba(0,0,0,.3)}
-.lb-dots{position:absolute;top:12px;right:12px;z-index:1;display:flex;gap:5px}
-.lb-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5)}
+.lban{position:relative;display:block;margin-top:12px;height:clamp(230px,30vw,320px);border-radius:20px;overflow:hidden;background:#2b0a0e;box-shadow:0 10px 24px rgba(90,20,25,.18);text-decoration:none;color:#fff}
+.lb-s{position:absolute;inset:0;opacity:0;transition:opacity .8s ease}
+.lb-s.on{opacity:1}
+.lb-s .bg{position:absolute;inset:-20px;width:calc(100% + 40px);height:calc(100% + 40px);object-fit:cover;filter:blur(18px) brightness(.45) saturate(1.2)}
+.lb-s .fg{position:absolute;right:12px;top:12px;height:calc(100% - 24px);width:auto;max-width:52%;object-fit:contain;border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.45)}
+.lb-t{position:absolute;left:16px;top:0;bottom:0;width:calc(48% - 24px);z-index:1;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.lb-t b{font:800 20px/1.15 var(--fd)}
+.lb-t small{font:600 13px/1.3 var(--fd);color:rgba(255,255,255,.88)}
+.lb-go{align-self:flex-start;display:inline-flex;align-items:center;height:40px;margin-top:10px;padding:0 18px;border-radius:99px;background:var(--am);color:#fff;font:800 14px var(--fd);box-shadow:0 6px 16px rgba(0,0,0,.3)}
+.lb-dots{display:flex;gap:5px;margin-top:12px}
+.lb-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.4)}
 .lb-dots i.on{background:#fff}
-@media(prefers-reduced-motion:reduce){.lban img{transition:none}}
+@media(min-width:820px){.lb-t b{font-size:26px}.lb-t small{font-size:15px}}
+@media(prefers-reduced-motion:reduce){.lb-s{transition:none}}
 /* install */
 .inst{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 10px 12px 14px;border-radius:20px;background:var(--cream);border:1.5px solid #F6D2CF}
 .inst i{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#fff;color:var(--amd);box-shadow:0 3px 10px rgba(90,20,25,.08)}
@@ -357,7 +359,7 @@ a{color:inherit}
 <main id="top">
 <div class="w">
   <div id="inst"></div>
-  <a class="lban" id="lban" href="#" target="_blank" rel="noopener" aria-label="Обеды в ланч-боксах: заказать в WhatsApp"><img src="img/lb1.webp" alt="" class="on"><img src="img/lb2.webp" alt="" loading="lazy"><img src="img/lb3.webp" alt="" loading="lazy"><img src="img/lb4.webp" alt="" loading="lazy"><img src="img/lb5.webp" alt="" loading="lazy"><img src="img/lb6.webp" alt="" loading="lazy"><img src="img/lb7.webp" alt="" loading="lazy"><img src="img/lb8.webp" alt="" loading="lazy"><div class="lb-t"><b>Түскі ас · обеды</b><small>Горячие ланч-боксы с доставкой</small></div><span class="lb-go">Заказать</span><span class="lb-dots"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></a>
+  <a class="lban" id="lban" href="#" target="_blank" rel="noopener" aria-label="Обеды в ланч-боксах: заказать в WhatsApp"><div class="lb-s on"><img class="bg" src="img/lb1.webp" alt=""><img class="fg" src="img/lb1.webp" alt=""></div><div class="lb-s"><img class="bg" src="img/lb2.webp" alt="" loading="lazy"><img class="fg" src="img/lb2.webp" alt="" loading="lazy"></div><div class="lb-s"><img class="bg" src="img/lb3.webp" alt="" loading="lazy"><img class="fg" src="img/lb3.webp" alt="" loading="lazy"></div><div class="lb-s"><img class="bg" src="img/lb4.webp" alt="" loading="lazy"><img class="fg" src="img/lb4.webp" alt="" loading="lazy"></div><div class="lb-s"><img class="bg" src="img/lb5.webp" alt="" loading="lazy"><img class="fg" src="img/lb5.webp" alt="" loading="lazy"></div><div class="lb-s"><img class="bg" src="img/lb6.webp" alt="" loading="lazy"><img class="fg" src="img/lb6.webp" alt="" loading="lazy"></div><div class="lb-s"><img class="bg" src="img/lb7.webp" alt="" loading="lazy"><img class="fg" src="img/lb7.webp" alt="" loading="lazy"></div><div class="lb-s"><img class="bg" src="img/lb8.webp" alt="" loading="lazy"><img class="fg" src="img/lb8.webp" alt="" loading="lazy"></div><div class="lb-t"><b>Түскі ас · обеды</b><small>Горячие ланч-боксы с доставкой</small><span class="lb-go">Заказать</span><span class="lb-dots"><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div></a>
   <section class="hero">
     <div>
       <span class="eyebrow">Гулшат Байзакова · шеф-повар · Кызылорда</span>
@@ -1039,7 +1041,7 @@ function instSheet(p){
   openSheet('<h3>Установить приложение</h3><p class="sub" style="margin:0">Значок на экране открывает меню «Повар КЗО» сразу, без поиска ссылки. Из магазина приложений ничего скачивать не нужно.</p><div class="fl">'+['tv','ios','and','pc'].map(function(k){return '<button class="chip'+(k===p?' on':'')+'" data-instp="'+k+'">'+IG[k].t+'</button>'}).join('')+'</div><ol class="stp">'+IG[p].s.map(function(x){return '<li>'+esc(x)+'</li>'}).join('')+'</ol>'+(p==='tv'?'<div class="row"><button class="sm p" data-inst="gotv">Открыть экран кухни</button></div>':'')+'<button class="sm" data-act="sheetclose">Понятно</button>');
 }
 function RENT(){return '<a class="rent" href="'+esc(waUrl(WA,'Здравствуйте! Хочу взять в прокат столы и стулья.'))+'" target="_blank" rel="noopener"><div><b>Прокат <em>столов и стульев</em></b><small>Для тоя, юбилея и любого праздника · заказ в WhatsApp</small></div><span class="go">Заказать</span>'+RENTART+'</a>'}
-(function(){var L=document.getElementById('lban');if(!L)return;L.href=waUrl(WA,'Здравствуйте! Хочу заказать обеды (ланч-боксы).');var im=L.querySelectorAll('img'),dt=L.querySelectorAll('.lb-dots i'),k=0;setInterval(function(){if(document.hidden)return;im[k].className='';dt[k].className='';k=(k+1)%im.length;im[k].className='on';dt[k].className='on'},3000)})();
+(function(){var L=document.getElementById('lban');if(!L)return;L.href=waUrl(WA,'Здравствуйте! Хочу заказать обеды (ланч-боксы).');var im=L.querySelectorAll('.lb-s'),dt=L.querySelectorAll('.lb-dots i'),k=0;setInterval(function(){if(document.hidden)return;im[k].className='lb-s';dt[k].className='';k=(k+1)%im.length;im[k].className='lb-s on';dt[k].className='on'},3000)})();
 function instBar(){
   var b=$('#inst');if(!b)return;
   if(STANDALONE||(LS.get('povar.inst',0)&&!DIP)){b.innerHTML=RENT();return}
