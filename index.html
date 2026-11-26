@@ -440,7 +440,7 @@ var $=function(s,r){return (r||document).querySelector(s)};
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
 var LS={get:function(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del:function(k){try{localStorage.removeItem(k)}catch(e){}}};
 var API='https://br-soft-star-bg6t84ky-povar.compute.c-9.eu-central-1.aws.neon.tech';
-function api(m,p,b,px){var h={'Content-Type':'application/json'},pin=px||LS.get('povar.pin','')||LS.get('povar.kpin','');if(pin)h['X-Pin']=pin;var ac=null,tm=null;try{ac=new AbortController();tm=setTimeout(function(){ac.abort()},15000)}catch(x){}return fetch(API+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined,cache:'no-store',signal:ac?ac.signal:undefined}).finally(function(){clearTimeout(tm)}).then(function(r){if(r.status===401){var e=new Error('pin');e.pin=1;throw e}if(!r.ok)throw new Error('http '+r.status);return r.json()})}
+function api(m,p,b,px){var h={'Content-Type':'application/json'},pin=px||LS.get('povar.pin','')||LS.get('povar.kpin','');if(pin)h['X-Pin']=pin;var ac=null,tm=null;try{ac=new AbortController();tm=setTimeout(function(){ac.abort()},15000)}catch(x){}return fetch(API+p,{method:m,headers:h,body:b?JSON.stringify(b):undefined,cache:'no-store',signal:ac?ac.signal:undefined}).finally(function(){clearTimeout(tm)}).then(function(r){if(r.status===401){var e=new Error('pin');e.pin=1;throw e}if(r.status===409){return r.json().then(function(j){var e=new Error('conflict');e.conflict=1;e.state=j&&j.state;throw e})}if(!r.ok)throw new Error('http '+r.status);return r.json()})}
 var CATN={};DATA.cats.forEach(function(c){CATN[c[0]]=c[1]});
 var pad=function(n){return String(n).padStart(2,'0')};
 var ymd=function(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
@@ -637,11 +637,23 @@ function buildHtml(st){
   var json=JSON.stringify(st).replace(/</g,'\\u003c');
   return PRISTINE.replace(/(<script type="application\/json" id="state">)[\s\S]*?(<\/script>)/,function(m,a,b){return a+json+b});
 }
+var SAVING=false,RETRY=null,NCONF=0;
+function mergeOnto(base,mine,srv){var b=mk(base||[]),m=mk(mine||[]),out=[],seen={};(srv||[]).forEach(function(s){var bi=b[s.id],mi=m[s.id];if(bi&&!mi)return;out.push(mi&&JSON.stringify(mi)!==JSON.stringify(bi)?mi:s);seen[s.id]=1});(mine||[]).forEach(function(x){if(!seen[x.id]&&!b[x.id])out.push(x)});return out}
+function saveNow(){
+  if(!DRAFT||!dirty())return Promise.resolve();
+  if(SAVING){clearTimeout(AUTOT);AUTOT=setTimeout(saveNow,900);return Promise.resolve()}
+  SAVING=true;clearTimeout(RETRY);var base=STATE;var ns={v:1,rev:(STATE.rev||0)+1,items:DRAFT.items,busy:DRAFT.busy};
+  return api('PUT','/state',ns).then(function(){SAVING=false;NCONF=0;LS.del('povar.draft');applyState(ns);DRAFT=null;loadDraft();try{adRender()}catch(x){}toast('Сохранено ✓ Клиенты уже видят изменения')},function(e){
+    SAVING=false;
+    if(e&&e.conflict&&e.state&&NCONF<5){NCONF++;var srv=e.state;srv.busy=srv.busy||{};var it=mergeOnto(base.items,DRAFT.items,srv.items),bz=Object.assign({},srv.busy,DRAFT.busy);applyState(srv);DRAFT={v:1,rev:srv.rev||0,items:it,busy:bz};LS.set('povar.draft',{base:srv.rev||0,state:DRAFT});return saveNow()}
+    if(e&&e.pin){toast('Неверный PIN-код');return}
+    toast('Нет связи. Изменения сохранены на телефоне и отправятся автоматически.');RETRY=setTimeout(saveNow,10000)});
+}
+window.addEventListener('online',function(){if(LS.get('povar.pin',''))saveNow()});
+function upImg(dataUrl){return api('POST','/img',{data:dataUrl}).then(function(j){return j.url})}
 function doPublish(){
   if(!IN_CLAUDE){
-    var ns={v:1,rev:(STATE.rev||0)+1,items:DRAFT.items,busy:DRAFT.busy};
-    var b0=$('#pubbtn');if(b0){b0.disabled=true;b0.textContent='Публикую…'}
-    return api('PUT','/state',ns).then(function(){LS.del('povar.draft');applyState(ns);DRAFT=null;loadDraft();adRender();toast('Сохранено ✓ Клиенты уже видят изменения')},function(e){if(b0){b0.disabled=false;b0.textContent='Опубликовать'}toast(e&&e.pin?'Неверный PIN-код':'Не удалось опубликовать. Проверьте интернет.')});
+    return saveNow();
   }
   if(!CAP.artifact){toast('Публикация недоступна: войдите как администратор.');return Promise.resolve()}
   var st={v:1,rev:(STATE.rev||0)+1,items:DRAFT.items,busy:DRAFT.busy};
@@ -827,7 +839,7 @@ function onFile(file){
     if(CAP.assets){
       return Promise.resolve(CAP.assets.upload(r.blob)).then(function(a){IT.im=(a&&a.url)||('/_blob/'+a.id);IT.aid=a.id})
     }
-    IT.im=r.c.toDataURL('image/jpeg',.8);
+    var du=r.c.toDataURL('image/jpeg',.8);if(!IN_CLAUDE&&LS.get('povar.pin','')){var s0=$('#it-st');if(s0)s0.textContent='Загружаю фото…';return upImg(du).then(function(u){IT.im=u},function(){IT.im=du})}IT.im=du;
   }).then(function(){itRead();itSheet()}).catch(function(){var s=$('#it-st');if(s)s.textContent='Не удалось загрузить фото. Попробуйте другое.'});
 }
 
@@ -1017,7 +1029,7 @@ function pinForm(box,w){
   $('#pin-go').onclick=go;$('#pin-in').onkeydown=function(e){if(e.key==='Enter')go()};
   setTimeout(function(){try{$('#pin-in').focus()}catch(x){}},50);
 }
-if(!IN_CLAUDE){api('GET','/state').then(function(st){if(st&&Array.isArray(st.items)&&(st.rev||0)>=(STATE.rev||0))applyState(st)},function(){})}
+if(!IN_CLAUDE){api('GET','/state').then(function(st){if(st&&Array.isArray(st.items)&&(st.rev||0)>=(STATE.rev||0)){var mx=0,hv=mk(st.items);st.items.forEach(function(i){if(/^b\d+$/.test(i.id)){var n=+i.id.slice(1);if(n>mx)mx=n}});(STATE.items||[]).forEach(function(i){if(/^b\d+$/.test(i.id)&&+i.id.slice(1)>mx&&!hv[i.id])st.items.push(i)});var wasClean=!DRAFT||!dirty();applyState(st);if(wasClean){DRAFT=null;loadDraft()}try{if(!$('#adm').hidden)adRender()}catch(x){}}},function(){})}
 /* ---------- install app (PWA): phone + TV ---------- */
 var UA=navigator.userAgent||'';
 var IS_TV=/SmartTV|SMART-TV|Tizen|Web0S|webOS|NetCast|BRAVIA|Android TV|GoogleTV|AFT[A-Z]|CrKey|HbbTV|Large Screen/i.test(UA)||(/Android/.test(UA)&&!/Mobile/.test(UA)&&!(navigator.maxTouchPoints>0));
