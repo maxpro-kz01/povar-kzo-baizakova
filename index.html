@@ -531,6 +531,14 @@ function lbOpen(id){lbList=list();lbI=Math.max(0,lbList.map(function(x){return x
 function lbClose(){$('#lbx').hidden=true;$('#lbx').innerHTML='';document.body.style.overflow=''}
 
 /* ---------- request form ---------- */
+function qGet(){var q=LS.get('povar.outbox',[]);return Array.isArray(q)?q:[]}
+function qPush(o){var q=qGet().filter(function(x){return x.cid!==o.cid});q.push(o);LS.set('povar.outbox',q.slice(-20))}
+function qDel(cid){LS.set('povar.outbox',qGet().filter(function(x){return x.cid!==cid}))}
+function sendOrd(o){var ac=null,tm=null;try{ac=new AbortController();tm=setTimeout(function(){ac.abort()},8000)}catch(e){}
+  return fetch(API+'/request',{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(o),cache:'no-store',signal:ac?ac.signal:undefined}).then(function(r){clearTimeout(tm);if(!r.ok&&r.status!==400)throw new Error('http '+r.status);qDel(o.cid)},function(e){clearTimeout(tm);throw e})}
+function qFlush(){if(IN_CLAUDE)return;qGet().forEach(function(o){sendOrd(o).catch(function(){})})}
+setTimeout(qFlush,1500);window.addEventListener('online',qFlush);document.addEventListener('visibilitychange',function(){if(!document.hidden)qFlush()});
+
 var F={name:'#f-name',phone:'#f-phone',type:'#f-type',date:'#f-date',guests:'#f-guests',note:'#f-note'};
 function busyCheck(){var d=ST.me.date;$('#busywarn').hidden=!(d&&STATE.busy[d])}
 Object.keys(F).forEach(function(k){var el=$(F[k]);if(k==='type'&&['На вынос','Доставка'].indexOf(ST.me.type)<0)ST.me.type='На вынос';el.value=ST.me[k]||'';var h=function(){ST.me[k]=el.value;save();if(k==='date')busyCheck()};el.addEventListener('input',h);el.addEventListener('change',h)});
@@ -551,8 +559,10 @@ $('#send').addEventListener('click',function(){
   if(a.length)t+='\n\nБлюда:\n'+a.map(function(id,k){var it=BYID[id];var q=ST.sel[id]>1?ST.sel[id]:1;return (k+1)+'. '+labelOf(it)+(q>1?' × '+q:'')+(it.p?' — '+it.p:'')}).join('\n');
   if(String(m.note||'').trim())t+='\n\nПожелания: '+m.note.trim();
   var url=waUrl(WA,t);
-  if(!IN_CLAUDE){try{fetch(API+'/request',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({name:m.name.trim(),phone:m.phone.trim(),date:m.date||'',type:m.type,guests:m.guests||'',note:String(m.note||'').trim(),dishes:a,qty:(function(){var o={};a.forEach(function(id){if(ST.sel[id]>1)o[id]=ST.sel[id]});return o})()})}).catch(function(){})}catch(e){}}
-  try{var l=document.createElement('a');l.href=url;l.target='_blank';l.rel='noopener';document.body.appendChild(l);l.click();l.remove()}catch(e){}
+  var ord={cid:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:m.name.trim(),phone:m.phone.trim(),date:m.date||'',type:m.type,guests:m.guests||'',note:String(m.note||'').trim(),dishes:a,qty:(function(){var o={};a.forEach(function(id){if(ST.sel[id]>1)o[id]=ST.sel[id]});return o})()};
+  var openWA=function(){try{location.href=url}catch(e){try{var l=document.createElement('a');l.href=url;document.body.appendChild(l);l.click();l.remove()}catch(x){}}};
+  if(IN_CLAUDE){try{var l2=document.createElement('a');l2.href=url;l2.target='_blank';l2.rel='noopener';document.body.appendChild(l2);l2.click();l2.remove()}catch(e){}}
+  else{var sb=$('#send');if(sb){sb.disabled=true;sb.textContent='Отправляю заказ…'}qPush(ord);var done=false;var fin=function(){if(done)return;done=true;if(sb){sb.disabled=false;sb.textContent='Отправить заявку в WhatsApp'}openWA()};sendOrd(ord).then(fin,fin);setTimeout(fin,6000)}
   $('#form').hidden=true;var d=$('#done');d.hidden=false;
   d.innerHTML='<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#D21F2B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg><h3>Заявка готова</h3><p>Откройте WhatsApp и нажмите «Отправить», чтобы шеф получил вашу заявку.</p><a class="btn p" href="'+esc(url)+'" target="_blank" rel="noopener">Открыть WhatsApp</a><button class="btn" data-act="again">Вернуться к заявке</button>';
   d.scrollIntoView({block:'center'});
