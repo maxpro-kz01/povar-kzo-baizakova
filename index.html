@@ -552,7 +552,7 @@ $('#send').addEventListener('click',function(){
   if(msg){err.textContent=msg;err.hidden=false;return}
   err.hidden=true;
   var t='';
-  if(m.date&&STATE.busy[m.date])t+='⚠ ДАТА '+fmtD(m.date)+' УЖЕ ЗАНЯТА В КАЛЕНДАРЕ. Брать ли заказ на эту дату?\n\n';
+  if(m.date&&STATE.busy[m.date])t+='‼ ВНИМАНИЕ! ДАТА '+fmtD(m.date)+' УЖЕ ЗАНЯТА В КАЛЕНДАРЕ. Брать ли заказ на эту дату?\n\n';
   t+='Заказ (Повар КЗО Байзакова)\nИмя: '+m.name.trim()+'\nТелефон: '+m.phone.trim()+'\nПолучение: '+m.type;
   if(m.date)t+='\nДата: '+m.date;
   if(m.guests)t+='\nГостей: '+m.guests;
@@ -560,7 +560,7 @@ $('#send').addEventListener('click',function(){
   if(String(m.note||'').trim())t+='\n\nПожелания: '+m.note.trim();
   var url=waUrl(WA,t);
   var ord={cid:'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),name:m.name.trim(),phone:m.phone.trim(),date:m.date||'',type:m.type,guests:m.guests||'',note:String(m.note||'').trim(),dishes:a,qty:(function(){var o={};a.forEach(function(id){if(ST.sel[id]>1)o[id]=ST.sel[id]});return o})()};
-  var openWA=function(){try{location.href=url}catch(e){try{var l=document.createElement('a');l.href=url;document.body.appendChild(l);l.click();l.remove()}catch(x){}}};
+  var openWA=function(){var ua=navigator.userAgent||'',mob=/Android|iPhone|iPad|iPod/i.test(ua);if(mob){var app='whatsapp://send?phone='+WA+'&text='+encodeURIComponent(t);var left=false;var onh=function(){if(document.hidden)left=true};document.addEventListener('visibilitychange',onh);try{location.href=app}catch(e){}setTimeout(function(){document.removeEventListener('visibilitychange',onh);if(!left&&!document.hidden){try{location.href=url}catch(e){}}},1600);return}try{location.href=url}catch(e){try{var l=document.createElement('a');l.href=url;document.body.appendChild(l);l.click();l.remove()}catch(x){}}};
   if(IN_CLAUDE){try{var l2=document.createElement('a');l2.href=url;l2.target='_blank';l2.rel='noopener';document.body.appendChild(l2);l2.click();l2.remove()}catch(e){}}
   else{var sb=$('#send');if(sb){sb.disabled=true;sb.textContent='Отправляю заказ…'}qPush(ord);var done=false;var fin=function(){if(done)return;done=true;if(sb){sb.disabled=false;sb.textContent='Отправить заявку в WhatsApp'}openWA()};sendOrd(ord).then(fin,fin);setTimeout(fin,6000)}
   $('#form').hidden=true;var d=$('#done');d.hidden=false;
@@ -600,7 +600,7 @@ function osStart(){
   if(OS.started)return;OS.started=true;
   if(!IN_CLAUDE){
     OS.mode='api';
-    var pull=function(){return api('GET','/orders').then(function(l){OS.list=Array.isArray(l)?l:[];OS.loaded=true;OS.err=false;osEmit()},function(){OS.err=true;OS.loaded=true;osEmit()})};
+    var pull=function(){return api('GET','/orders').then(function(l){OS.list=Array.isArray(l)?l:[];OS.loaded=true;OS.err=false;var n=new Date();OS.at=pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());osEmit()},function(){OS.err=true;OS.loaded=true;osEmit()})};OS.pull=pull;document.addEventListener('visibilitychange',function(){if(!document.hidden)pull()});window.addEventListener('focus',function(){pull()});window.addEventListener('online',function(){pull()});
     var loc=LS.get('povar.orders',[]);
     Promise.all((Array.isArray(loc)?loc:[]).map(function(o){return o&&o.id?api('PUT','/orders/'+o.id,o):null})).then(function(){LS.del('povar.orders')},function(){}).then(pull);
     setInterval(function(){if(!document.hidden)pull()},8000);
@@ -712,7 +712,7 @@ function adRender(){
   var tabs=[['orders','Заказы'],['cal','Календарь'],['menu','Меню'],['rep','Отчёты']];
   var h='<div class="ah"><b>Админка</b><a class="sm" href="#tv">Экран кухни</a>'+(IN_CLAUDE?'':'<button class="sm" data-pinout>Сменить PIN</button>')+'<button class="sm" data-act="adclose">Выйти</button></div>';
   h+='<nav class="tabs" role="tablist">'+tabs.map(function(t){return '<button role="tab" class="'+(AD.tab===t[0]?'on':'')+'" data-adtab="'+t[0]+'" aria-selected="'+(AD.tab===t[0])+'">'+t[1]+'</button>'}).join('')+'</nav>';
-  h+='<div class="ab w">'+''+(OS.mode==='local'&&OS.started?'<div class="note">Вы не вошли в общее хранилище: заказы сохраняются только на этом устройстве, экран кухни их не увидит.</div>':'')+(OS.err?'<div class="note">Не удаётся загрузить заказы. Проверьте интернет и войдите в Claude.</div>':'')+(function(){try{return AD.tab==='orders'?adOrders():AD.tab==='cal'?adCal():AD.tab==='rep'?adRep():adMenu()}catch(er){try{console.error(er)}catch(x){}return '<div class="card"><b>Не удалось показать раздел.</b><p class="sub">Обновите страницу. Если повторится, сфотографируйте этот текст: '+esc(String(er&&(er.message||er)))+'</p></div>'}})()+'</div>';
+  h+='<div class="ab w">'+''+(OS.mode==='local'&&OS.started?'<div class="note">Вы не вошли в общее хранилище: заказы сохраняются только на этом устройстве, экран кухни их не увидит.</div>':'')+(OS.mode==='api'?(OS.err?'<div class="note" style="background:#FDE7E7;color:#A3121C;font-weight:700">⛔ Нет связи с сервером. Показаны заказы на '+esc(OS.at||'—')+'. Проверьте интернет.</div>':'<div class="sub" style="margin:0 0 8px">✓ Обновлено в '+esc(OS.at||'…')+' · автоматически каждые 8 сек</div>'):'')+(function(){try{return AD.tab==='orders'?adOrders():AD.tab==='cal'?adCal():AD.tab==='rep'?adRep():adMenu()}catch(er){try{console.error(er)}catch(x){}return '<div class="card"><b>Не удалось показать раздел.</b><p class="sub">Обновите страницу. Если повторится, сфотографируйте этот текст: '+esc(String(er&&(er.message||er)))+'</p></div>'}})()+'</div>';
   if(dirty()){h+='<div class="pbar"><span>Есть неопубликованные изменения</span><button class="sm" data-act="adreset">Сбросить</button><button class="sm p" id="pubbtn" data-act="adpub">'+'Опубликовать'+'</button></div>'}
   box.innerHTML=h;box.scrollTop=scr;
 }
@@ -918,7 +918,7 @@ function tvRender(){
   var today=L.filter(function(o){return o.date===t&&(o.status||'new')==='new'});
   var col=function(st,title){var a=today;return '<section class="tc '+st+'"><h2><span>'+title+'</span><span>'+a.length+'</span></h2><div class="bd">'+(a.length?a.map(function(o){return tvOrder(o)}).join(''):'<div class="em">Пусто</div>')+'</div></section>'};
   var nx=L.filter(function(o){return o.date>t&&(o.status||'new')==='new'}).slice(0,8);
-  var h='<div class="tvh"><h1>Заказы на сегодня</h1><span class="dt">'+esc(fmtL(t))+'</span><span class="ck2">'+pad(now.getHours())+':'+pad(now.getMinutes())+'</span><button class="sm x" data-inst="fs">'+(document.fullscreenElement||document.webkitFullscreenElement?'Свернуть':'Во весь экран')+'</button>'+(IN_CLAUDE?'':'<button class="sm" data-pinout>Сменить PIN</button>')+'<button class="sm" data-act="adclose">Выйти</button></div>';
+  var h='<div class="tvh"><h1>Заказы на сегодня</h1><span class="dt">'+esc(fmtL(t))+'</span><span class="ck2">'+pad(now.getHours())+':'+pad(now.getMinutes())+'</span>'+(OS.mode==='api'?(OS.err?'<span style="color:#fff;background:#C9381F;border-radius:99px;padding:6px 12px;font-weight:800">Нет связи с сервером</span>':'<span style="opacity:.7;font-size:14px">обновлено '+esc((OS.at||'').slice(0,5))+'</span>'):'')+'<button class="sm x" data-inst="fs">'+(document.fullscreenElement||document.webkitFullscreenElement?'Свернуть':'Во весь экран')+'</button>'+(IN_CLAUDE?'':'<button class="sm" data-pinout>Сменить PIN</button>')+'<button class="sm" data-act="adclose">Выйти</button></div>';
   if(OS.err)h+='<div class="note">Нет связи с хранилищем заказов.</div>';
   if(OS.mode==='local')h+='<div class="note">Экран работает без общего входа: показаны только заказы, созданные на этом устройстве.</div>';
   h+='<div class="tvm">'+col('new','Новые')+'<section class="tc next"><h2><span>Ближайшие дни</span></h2><div class="bd">'+(nx.length?nx.map(function(o){return tvOrder(o,true)}).join(''):'<div class="em">Заказов на ближайшие дни нет</div>')+'</div></section></div>';
